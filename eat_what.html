@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>美食大转盘</title>
+<style>
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+    
+    body {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+    }
+    
+    h1 {
+        color: #fff;
+        margin-bottom: 30px;
+        font-size: 36px;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    /* 转盘容器 */
+    .wheel-wrap {
+        position: relative;
+        width: 500px;
+        height: 500px;
+        margin-bottom: 60px;
+    }
+    
+    /* 转盘 */
+    .wheel {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        overflow: hidden;
+        box-shadow: 0 0 30px rgba(0,0,0,0.4);
+        transition: transform 5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        cursor: pointer;
+        position: relative;
+        border: 8px solid #ffd700;
+    }
+    
+    .wheel:hover {
+        box-shadow: 0 0 40px rgba(255,215,0,0.6);
+    }
+    
+    /* Canvas 画布 */
+    #wheelCanvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+    
+    /* 中心指针 */
+    .center-pointer {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 0;
+        height: 0;
+        border-left: 30px solid transparent;
+        border-right: 30px solid transparent;
+        border-bottom: 80px solid #ff4444;
+        z-index: 10;
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+        pointer-events: none;
+    }
+    
+    /* 中心圆点 */
+    .center-dot {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ffd700, #ffed4e);
+        border: 4px solid #ff4444;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        z-index: 11;
+        pointer-events: none;
+    }
+    
+    /* 底部容器 */
+    .bottom-section {
+        position: absolute;
+        bottom: -80px;
+        right: -250px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        z-index: 5;
+    }
+    
+    /* 对话框样式 */
+    .tooltip-bubble {
+        position: relative;
+        background: #fff;
+        padding: 12px 20px;
+        border-radius: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        color: #333;
+        font-size: 16px;
+        font-weight: bold;
+        white-space: nowrap;
+        text-align: center;
+        animation: bounce 2s infinite;
+    }
+    
+    /* 对话框尖角 */
+    .tooltip-bubble::after {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 12px solid transparent;
+        border-right: 12px solid transparent;
+        border-top: 12px solid #fff;
+    }
+    
+    /* 图片容器 */
+    .eat-image {
+        width: 120px;
+        height: 120px;
+        object-fit: contain;
+        filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+    }
+    
+    /* 弹跳动画 */
+    @keyframes bounce {
+        0%, 100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+    
+    .result {
+        margin-top: 30px;
+        color: #fff;
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        min-height: 30px;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+</style>
+</head>
+<body>
+
+<h1>🍕 美食大转盘 🍜</h1>
+
+<div class="wheel-wrap">
+    <!-- 转盘 -->
+    <div class="wheel" id="wheel">
+        <canvas id="wheelCanvas"></canvas>
+    </div>
+    <!-- 中心指针 -->
+    <div class="center-pointer"></div>
+    <!-- 中心圆点 -->
+    <div class="center-dot"></div>
+    
+    <!-- 右下角区域 -->
+    <div class="bottom-section">
+        <!-- 对话框提示 -->
+        <div class="tooltip-bubble">
+            点击转盘看看今天吃什么吧！🐷
+        </div>
+        <!-- 图片 -->
+        <img src="eat.jpg" alt="吃什么" class="eat-image">
+    </div>
+</div>
+
+<div class="result" id="result"></div>
+
+<script>
+// 美食选项
+const foods = [
+    '拌饭', '米线', '螺蛳粉', '汉堡', '意面',
+    '轻食', '关东煮', '猪脚饭', '干锅排骨', '蛋包饭',
+    '兰湘子', '外婆味道', '茄子恰恰', '麻辣烫', '粥',
+    '寿司', '水饺', '奶茶', '小蛋糕'
+];
+
+const canvas = document.getElementById('wheelCanvas');
+const ctx = canvas.getContext('2d');
+const wheel = document.getElementById('wheel');
+const result = document.getElementById('result');
+
+// 设置 canvas 尺寸
+const size = 484; // 500 - 8*2 (border)
+canvas.width = size;
+canvas.height = size;
+
+const numSlices = foods.length;
+const sliceAngle = (2 * Math.PI) / numSlices;
+
+// 颜色数组
+const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
+    '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52B788',
+    '#FF8787', '#51E5E0', '#FFB347', '#B19CD9', '#77DD77',
+    '#FF6961', '#AEC6CF', '#FFD700', '#DDA0DD', '#F49AC2'
+];
+
+// 绘制转盘
+function drawWheel() {
+    const centerX = size / 2;
+    const centerY = size / 2;
+    const radius = size / 2;
+    
+    for (let i = 0; i < numSlices; i++) {
+        const startAngle = i * sliceAngle - Math.PI / 2;
+        const endAngle = startAngle + sliceAngle;
+        
+        // 绘制扇形
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+        
+        // 绘制边界线
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // 绘制文字
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px Arial';
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 3;
+        ctx.fillText(foods[i], radius * 0.65, 0);
+        ctx.restore();
+    }
+}
+
+drawWheel();
+
+let isSpinning = false;
+let currentRotation = 0;
+
+// 点击转盘触发旋转
+wheel.addEventListener('click', () => {
+    if (isSpinning) return;
+    isSpinning = true;
+    result.textContent = '转动中...';
+    
+    // 随机选择一个美食（每份 18°）
+    const randIndex = Math.floor(Math.random() * numSlices);
+    const degreesPerSlice = 360 / numSlices;
+    const base = 360 * 5; // 旋转5圈
+    const offset = 360 - (randIndex * degreesPerSlice + degreesPerSlice / 2);
+    const stopAngle = base + offset;
+    
+    // 应用旋转
+    currentRotation += stopAngle;
+    wheel.style.transform = `rotate(${currentRotation}deg)`;
+    
+    // 5秒后显示结果
+    setTimeout(() => {
+        result.textContent = `🎉 恭喜你抽到：${foods[randIndex]} 🎉`;
+        isSpinning = false;
+    }, 5000);
+});
+</script>
+
+</body>
+</html>
