@@ -259,7 +259,6 @@ function drawWheel() {
 drawWheel();
 
 let isSpinning = false;
-let currentRotation = 0;
 
 // 点击转盘触发旋转
 wheel.addEventListener('click', () => {
@@ -267,16 +266,19 @@ wheel.addEventListener('click', () => {
     isSpinning = true;
     result.textContent = '转动中...';
     
-    // 随机选择一个美食（每份 18°）
+    // 随机选择一个美食
     const randIndex = Math.floor(Math.random() * numSlices);
     const degreesPerSlice = 360 / numSlices;
-    const base = 360 * 5; // 旋转5圈
-    const offset = 360 - (randIndex * degreesPerSlice + degreesPerSlice / 2);
-    const stopAngle = base + offset;
+    
+    // 计算旋转角度
+    // 第 i 个扇形的中心位置：i * degreesPerSlice + degreesPerSlice/2
+    // 要让第 randIndex 个扇形的中心对准顶部指针，需要旋转的角度
+    const base = 360 * 5; // 基础旋转5圈
+    const targetAngle = randIndex * degreesPerSlice + degreesPerSlice / 2; // 目标扇形中心的角度
+    const stopAngle = base - targetAngle; // 需要旋转的总角度
     
     // 应用旋转
-    currentRotation += stopAngle;
-    wheel.style.transform = `rotate(${currentRotation}deg)`;
+    wheel.style.transform = `rotate(${stopAngle}deg)`;
     
     // 5秒后显示结果
     setTimeout(() => {
