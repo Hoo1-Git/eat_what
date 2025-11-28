@@ -259,6 +259,7 @@ function drawWheel() {
 drawWheel();
 
 let isSpinning = false;
+let spinCount = 0; // 记录旋转次数
 
 // 点击转盘触发旋转
 wheel.addEventListener('click', () => {
@@ -270,15 +271,20 @@ wheel.addEventListener('click', () => {
     const randIndex = Math.floor(Math.random() * numSlices);
     const degreesPerSlice = 360 / numSlices;
     
-    // 计算旋转角度
-    // 第 i 个扇形的中心位置：i * degreesPerSlice + degreesPerSlice/2
-    // 要让第 randIndex 个扇形的中心对准顶部指针，需要旋转的角度
-    const base = 360 * 5; // 基础旋转5圈
-    const targetAngle = randIndex * degreesPerSlice + degreesPerSlice / 2; // 目标扇形中心的角度
-    const stopAngle = base - targetAngle; // 需要旋转的总角度
+    // 计算最终停止的绝对角度（相对于初始位置）
+    // 初始状态：第0个扇形中心在顶部偏右 degreesPerSlice/2 的位置
+    // 第i个扇形中心的初始角度：i * degreesPerSlice + degreesPerSlice/2
+    // 要让第randIndex个扇形中心转到顶部（0度），需要逆时针转：
+    // -(randIndex * degreesPerSlice + degreesPerSlice/2)
+    // 等价于顺时针转：360 - (randIndex * degreesPerSlice + degreesPerSlice/2)
+    const targetPosition = -(randIndex * degreesPerSlice + degreesPerSlice / 2);
     
-    // 应用旋转
-    wheel.style.transform = `rotate(${stopAngle}deg)`;
+    // 每次增加5圈，避免总是停在同一个视觉位置
+    spinCount++;
+    const totalRotation = 360 * 5 * spinCount + targetPosition;
+    
+    // 应用旋转（使用绝对角度）
+    wheel.style.transform = `rotate(${totalRotation}deg)`;
     
     // 5秒后显示结果
     setTimeout(() => {
